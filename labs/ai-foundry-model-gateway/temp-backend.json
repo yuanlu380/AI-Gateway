@@ -1,0 +1,1 @@
+{"properties":{"protocol":"http","url":"https://csavatar380.cognitiveservices.azure.com","type":"Single","credentials":{"managedIdentity":{"resource":"https://cognitiveservices.azure.com"}},"tls":{"validateCertificateChain":true,"validateCertificateName":true}}}

@@ -1,0 +1,6 @@
+{
+  "properties": {
+    "format": "rawxml",
+    "value": "<policies><inbound><authentication-managed-identity resource=\"https://cognitiveservices.azure.com\" output-token-variable-name=\"managed-id-access-token\" ignore-error=\"false\" /><set-header name=\"Authorization\" exists-action=\"override\"><value>@(\"Bearer \" + (string)context.Variables[\"managed-id-access-token\"])</value></set-header><set-backend-service backend-id=\"gpt41-east\" /></inbound><backend><forward-request buffer-request-body=\"true\" /></backend><outbound><base /><set-header name=\"x-backend-region\" exists-action=\"override\"><value>East</value></set-header></outbound><on-error><base /></on-error></policies>"
+  }
+}

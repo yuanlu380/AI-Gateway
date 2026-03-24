@@ -1,0 +1,69 @@
+import requests
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+URL = "https://apim-q6z6fj63xd7he.azure-api.net/inference/openai/deployments/gpt-4.1/chat/completions?api-version=2024-12-01-preview"
+HEADERS = {
+    "api-key": "29d5d6dc6fe748f1a9a08e08a67a3051",
+    "Content-Type": "application/json"
+}
+BODY = {
+    "messages": [{"role": "user", "content": "Say hello in one word"}],
+    "max_tokens": 5
+}
+
+TOTAL_REQUESTS = 35
+
+start_time = time.time()
+
+def ts(t=None):
+    return time.strftime("%M:%S", time.gmtime((t or time.time()) - start_time))
+
+def call(i):
+    try:
+        r = requests.post(URL, headers=HEADERS, json=BODY, timeout=60)
+        return (i, r.headers.get("x-backend-region", "?"), r.status_code,
+                r.headers.get("x-ratelimit-remaining-requests", "?"),
+                r.headers.get("x-ratelimit-remaining-tokens", "?"),
+                time.time())
+    except Exception as e:
+        return (i, "ERROR", 0, "?", "?", time.time())
+
+print(f"Sending {TOTAL_REQUESTS} concurrent requests to gpt-4.1")
+#print(f"East: 26 RPM (Standard) — retry policy routes 429s to West")
+print(f"West: 500 RPM (absorbs overflow)\n")
+
+east_count = 0
+west_count = 0
+
+with ThreadPoolExecutor(max_workers=TOTAL_REQUESTS) as pool:
+    futures = {pool.submit(call, i): i for i in range(1, TOTAL_REQUESTS + 1)}
+    results = []
+    for future in as_completed(futures):
+        results.append(future.result())
+
+# Sort by request number for clean output
+results.sort(key=lambda x: x[0])
+
+for (i, region, status, rpm, tpm, t) in results:
+    if region == "East":
+        east_count += 1
+    elif region == "West":
+        west_count += 1
+
+    note = ""
+    if status == 429:
+        note += " ⚠ THROTTLED"
+    if status == 503:
+        note += " ⚠ SERVICE UNAVAILABLE"
+    if region == "West":
+        note += " 🔄 East 429 → retried to West"
+
+    print(f"{ts(t)}  Request {i:02d} → {region:7s} [{status}] (rpm: {rpm}, tpm: {tpm}){note}")
+
+print(f"\n{'='*60}")
+print(f"  East (direct):    {east_count} requests")
+print(f"  West (failover):  {west_count} requests")
+print(f"  Total:            {east_count + west_count}/{TOTAL_REQUESTS}")
+print(f"  Duration:         {ts()} seconds")
+print(f"{'='*60}")

@@ -1,0 +1,56 @@
+import requests
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+URL = "https://apim-q6z6fj63xd7he.azure-api.net/inference/"
+HEADERS = {
+    "api-key": "29d5d6dc6fe748f1a9a08e08a67a3051",
+    "Content-Type": "application/json"
+}
+BODY = {
+    "messages": [{"role": "user", "content": "Explain predictive maintenance"}],
+    "max_tokens": 200
+}
+
+start_time = time.time()
+
+def ts():
+    return time.strftime("%M:%S", time.gmtime(time.time() - start_time))
+
+def call(i):
+    try:
+        r = requests.post(URL, headers=HEADERS, json=BODY, timeout=60)
+
+        backend = r.headers.get("x-demo-region", "unknown").lower()
+
+        if "east" in backend:
+            region = "East"
+        elif "west" in backend:
+            region = "West"
+        else:
+            region = backend or "unknown"
+
+        note = ""
+        if r.status_code == 429:
+            note = " THROTTLED"
+
+        return (i, region, r.status_code, note)
+
+    except Exception as e:
+        return (i, "ERROR", "", f" [{e}]")
+
+with ThreadPoolExecutor(max_workers=60) as pool:
+    results = list(pool.map(call, range(1, 61)))
+
+previous_region = None
+
+for i, region, status, note in results:
+
+    switch = ""
+    if previous_region and region != previous_region:
+        switch = f" SWITCHED {previous_region.upper()}→{region.upper()}"
+
+    print(f"{ts()}  Request {i:02d} → {region} [{status}]{note}{switch}")
+
+    if region not in ["ERROR", "unknown"]:
+        previous_region = region

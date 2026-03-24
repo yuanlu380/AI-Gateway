@@ -1,0 +1,6 @@
+{
+  "properties": {
+    "format": "rawxml",
+    "value": "<policies><inbound><set-backend-service backend-id=\"gpt41-east\" /><set-header name=\"Authorization\" exists-action=\"override\"><value>@(context.Request.Headers.GetValueOrDefault(\"X-User-Token\",\"\"))</value></set-header></inbound><backend><forward-request buffer-request-body=\"true\" /></backend><outbound><base /><set-header name=\"x-backend-region\" exists-action=\"override\"><value>East</value></set-header></outbound><on-error><base /></on-error></policies>"
+  }
+}
