@@ -91,8 +91,7 @@
     "architectureDiagram": "images/foundry-model-gateway.gif",
     "categories": [
       "Platform Capabilities",
-      "Models Usage",
-      "Gateway Pattern"
+      "Models Usage"
     ],
     "services": [
       "Azure AI Foundry",
@@ -183,8 +182,8 @@
     "name": "Azure ML Model as MCP Server",
     "architectureDiagram": "",
     "categories": [
-      "AI Agents & MCP",
-      "Model Integration"
+      "AI Agents",
+      "Knowledge & Tools"
     ],
     "services": [
       "Azure API Management",
@@ -301,6 +300,50 @@
     "githubPath": "https://github.com/Azure-Samples/AI-Gateway/tree/main/labs/finops-framework",
     "tags": [],
     "lastCommitDate": "2026-02-04T13:09:52.730Z"
+  },
+  {
+    "id": "foundry-iq-agent-svc",
+    "name": "Foundry IQ Agent Service Integration",
+    "architectureDiagram": "images/foundry-iq-agent-svc.gif",
+    "categories": [
+      "AI Agents",
+      "Knowledge & Tools"
+    ],
+    "services": [
+      "Azure AI Foundry",
+      "Azure AI Search",
+      "Azure API Management"
+    ],
+    "shortDescription": "Integrate Foundry Agent Service with Foundry IQ Knowledge Base via MCP, with APIM as the AI Gateway.",
+    "detailedDescription": "End-to-end lab integrating the Foundry Agent Service with a Foundry IQ Knowledge Base through MCP (Model Context Protocol). APIM serves as the Model Gateway for all agent inference traffic and provides unified observability. The agent uses the knowledge_base_retrieve MCP tool to answer questions with citations. Covers both the Conversations API and Classic Agent API invocation patterns.",
+    "authors": [
+      "nourshaker-msft"
+    ],
+    "tags": [],
+    "githubPath": "https://github.com/Azure-Samples/AI-Gateway/tree/main/labs/foundry-iq-agent-svc",
+    "lastCommitDate": "2026-03-23T17:18:59.805Z"
+  },
+  {
+    "id": "foundry-iq-agentfw",
+    "name": "Foundry IQ with Microsoft Agent Framework",
+    "architectureDiagram": "images/foundry-iq-agentfw.gif",
+    "categories": [
+      "AI Agents",
+      "Knowledge & Tools"
+    ],
+    "services": [
+      "Azure AI Foundry",
+      "Azure AI Search",
+      "Azure API Management"
+    ],
+    "shortDescription": "Integrate Microsoft Agent Framework with Foundry IQ Knowledge Base via AzureAISearchContextProvider, with APIM as the AI Gateway.",
+    "detailedDescription": "End-to-end lab integrating the Microsoft Agent Framework with a Foundry IQ Knowledge Base using the AzureAISearchContextProvider. APIM serves as the AI Gateway for embedding traffic and provides unified observability. Demonstrates both semantic (fast hybrid search) and agentic (intelligent multi-hop retrieval) modes. Based on the official Agent Framework + Foundry IQ integration pattern.",
+    "authors": [
+      "nourshaker-msft"
+    ],
+    "tags": [],
+    "githubPath": "https://github.com/Azure-Samples/AI-Gateway/tree/main/labs/foundry-iq-agentfw",
+    "lastCommitDate": "2026-03-23T17:18:59.806Z"
   },
   {
     "id": "foundry-models-evals",
@@ -744,6 +787,27 @@
     "githubPath": "https://github.com/Azure-Samples/AI-Gateway/tree/main/labs/semantic-caching",
     "tags": [],
     "lastCommitDate": "2026-02-04T13:09:52.739Z"
+  },
+  {
+    "id": "serverless-gpu",
+    "name": "Serverless GPU Inference",
+    "architectureDiagram": "images/serverless-gpu.gif",
+    "categories": [
+      "Models Usage"
+    ],
+    "services": [
+      "Azure Container Apps",
+      "Azure API Management",
+      "Serverless GPUs"
+    ],
+    "shortDescription": "Deploy SGLang on Azure Container Apps with GPU and expose through APIM",
+    "detailedDescription": "Deploy the SGLang high-performance LLM serving framework on Azure Container Apps with NVIDIA A100 GPU workload profiles, and expose the OpenAI-compatible inference endpoint through Azure API Management for secure, managed access.",
+    "authors": [
+      "nourshaker-msft"
+    ],
+    "tags": [],
+    "githubPath": "https://github.com/Azure-Samples/AI-Gateway/tree/main/labs/serverless-gpu",
+    "lastCommitDate": "2026-03-20T23:53:05.181Z"
   },
   {
     "id": "session-awareness",
