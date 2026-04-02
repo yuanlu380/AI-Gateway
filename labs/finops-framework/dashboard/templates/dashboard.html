@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APIM ❤️ FinOps Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f1117; color: #e0e0e0; }
+        .header { background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%); padding: 20px 32px; border-bottom: 1px solid #30363d; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 22px; font-weight: 600; }
+        .header h1 span { color: #e74c3c; }
+        .header .meta { font-size: 13px; color: #8b949e; }
+        .controls { display: flex; align-items: center; gap: 12px; }
+        .refresh-btn { background: #238636; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .refresh-btn:hover { background: #2ea043; }
+        .refresh-btn:disabled { background: #21262d; color: #484f58; cursor: wait; }
+        .auto-label { font-size: 12px; color: #8b949e; cursor: pointer; }
+        .auto-label input { vertical-align: middle; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 24px 32px; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px; }
+        .card.full { grid-column: 1 / -1; }
+        .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: #c9d1d9; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 10px 12px; border-bottom: 2px solid #30363d; color: #8b949e; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        td { padding: 10px 12px; border-bottom: 1px solid #21262d; }
+        tr:hover td { background: #1c2129; }
+        .stat-row { display: flex; gap: 16px; margin-bottom: 16px; }
+        .stat-box { flex: 1; background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 14px; text-align: center; }
+        .stat-box .value { font-size: 28px; font-weight: 700; color: #58a6ff; }
+        .stat-box .label { font-size: 11px; color: #8b949e; text-transform: uppercase; margin-top: 4px; }
+        .chart-container { position: relative; height: 280px; }
+        .no-data { text-align: center; padding: 40px; color: #484f58; font-size: 13px; }
+        .loading { text-align: center; padding: 40px; color: #58a6ff; font-size: 13px; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .loading { animation: pulse 1.5s infinite; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>APIM <span>❤️</span> FinOps Dashboard</h1>
+            <div class="meta">
+                Resource Group: {{ resource_group }} &nbsp;|&nbsp; Workspace: {{ workspace_id[:8] }}...
+                &nbsp;|&nbsp; <span id="lastUpdate">Loading...</span>
+            </div>
+        </div>
+        <div class="controls">
+            <label class="auto-label"><input type="checkbox" id="autoRefresh" checked> Auto-refresh 30s</label>
+            <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">↻ Refresh</button>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card" id="costCard">
+            <h2>💰 Monthly Cost vs Quota</h2>
+            <div class="chart-container" id="costChartWrap"><div class="loading">Loading data...</div></div>
+        </div>
+        <div class="card" id="tokenCard">
+            <h2>🪙 Token Usage by Subscription</h2>
+            <div id="tokenTable"><div class="loading">Loading data...</div></div>
+        </div>
+        <div class="card full" id="trendCard">
+            <h2>📈 Cost Trend (Last 4 Hours)</h2>
+            <div class="chart-container" id="trendChartWrap"><div class="loading">Loading data...</div></div>
+        </div>
+        <div class="card full" id="requestCard">
+            <h2>🌐 Request Statistics (Last 4 Hours)</h2>
+            <div class="stat-row" id="statsRow"></div>
+            <div class="chart-container" id="requestChartWrap"><div class="loading">Loading data...</div></div>
+        </div>
+    </div>
+
+<script>
+const COLORS = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#bc8cff', '#39d2c0'];
+let costChart = null, trendChart = null, requestChart = null;
+
+function resetCanvas(wrapperId, canvasId) {
+    const wrap = document.getElementById(wrapperId);
+    wrap.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+    return document.getElementById(canvasId);
+}
+
+function renderCostChart(data) {
+    if (!data || data.length === 0) {
+        document.getElementById('costChartWrap').innerHTML = '<div class="no-data">No cost data yet. Run some API requests first.</div>';
+        return;
+    }
+    if (costChart) costChart.destroy();
+    const ctx = resetCanvas('costChartWrap', 'costCanvas');
+    costChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(r => r.SubscriptionName),
+            datasets: [
+                { label: 'Total Cost ($)', data: data.map(r => parseFloat(r.TotalCost).toFixed(4)), backgroundColor: '#58a6ff' },
+                { label: 'Cost Quota ($)', data: data.map(r => r.CostQuota), backgroundColor: 'rgba(63,185,80,0.3)', borderColor: '#3fb950', borderWidth: 2 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#8b949e' } } },
+            scales: {
+                x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+                y: { ticks: { color: '#8b949e', callback: v => '$' + v }, grid: { color: '#21262d' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+function renderTokenTable(data) {
+    const el = document.getElementById('tokenTable');
+    if (!data || data.length === 0) { el.innerHTML = '<div class="no-data">No token data yet.</div>'; return; }
+    const totalTokens = data.reduce((s, r) => s + r.TotalTokens, 0);
+    let html = '<div class="stat-row">';
+    html += `<div class="stat-box"><div class="value">${totalTokens.toLocaleString()}</div><div class="label">Total Tokens</div></div>`;
+    html += `<div class="stat-box"><div class="value">${data.reduce((s,r)=>s+r.Requests,0)}</div><div class="label">Total Requests</div></div>`;
+    html += '</div><table><thead><tr><th>Subscription</th><th>Prompt</th><th>Completion</th><th>Total</th><th>Requests</th></tr></thead><tbody>';
+    data.forEach((r,i) => {
+        html += `<tr><td><span style="color:${COLORS[i%COLORS.length]}">●</span> ${r.SubscriptionName}</td>
+                 <td>${r.PromptTokens.toLocaleString()}</td><td>${r.CompletionTokens.toLocaleString()}</td>
+                 <td><strong>${r.TotalTokens.toLocaleString()}</strong></td><td>${r.Requests}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+function renderTrendChart(data) {
+    if (!data || data.length === 0) {
+        document.getElementById('trendChartWrap').innerHTML = '<div class="no-data">No cost trend data yet. Run API requests and wait a few minutes for logs.</div>';
+        return;
+    }
+    if (trendChart) trendChart.destroy();
+    const ctx = resetCanvas('trendChartWrap', 'trendCanvas');
+    const subs = [...new Set(data.map(r => r.SubscriptionName))];
+    trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: subs.map((sub, i) => ({
+                label: sub,
+                data: data.filter(r => r.SubscriptionName === sub).map(r => ({ x: new Date(r.TimeGenerated), y: parseFloat(r.TotalCost) })),
+                borderColor: COLORS[i % COLORS.length],
+                backgroundColor: COLORS[i % COLORS.length] + '33',
+                fill: true, tension: 0.3, pointRadius: 3
+            }))
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#8b949e' } } },
+            scales: {
+                x: { type: 'time', time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } }, ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+                y: { ticks: { color: '#8b949e', callback: v => '$' + v.toFixed(4) }, grid: { color: '#21262d' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+function renderRequestChart(data) {
+    const statsEl = document.getElementById('statsRow');
+    if (!data || data.length === 0) {
+        statsEl.innerHTML = '';
+        document.getElementById('requestChartWrap').innerHTML = '<div class="no-data">No request data yet.</div>';
+        return;
+    }
+    if (requestChart) requestChart.destroy();
+    const totReq = data.reduce((s,r) => s + r.TotalRequests, 0);
+    const totOk = data.reduce((s,r) => s + r.SuccessfulRequests, 0);
+    const totFail = data.reduce((s,r) => s + r.FailedRequests, 0);
+    const avgLat = (data.reduce((s,r) => s + r.AvgLatencyMs, 0) / data.length).toFixed(0);
+    statsEl.innerHTML = `
+        <div class="stat-box"><div class="value">${totReq}</div><div class="label">Total Requests</div></div>
+        <div class="stat-box"><div class="value" style="color:#3fb950">${totOk}</div><div class="label">Successful</div></div>
+        <div class="stat-box"><div class="value" style="color:#f85149">${totFail}</div><div class="label">Failed</div></div>
+        <div class="stat-box"><div class="value">${avgLat}ms</div><div class="label">Avg Latency</div></div>`;
+    const ctx = resetCanvas('requestChartWrap', 'requestCanvas');
+    requestChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(r => new Date(r.TimeGenerated)),
+            datasets: [
+                { label: 'Success', data: data.map(r => r.SuccessfulRequests), backgroundColor: '#238636' },
+                { label: 'Failed', data: data.map(r => r.FailedRequests), backgroundColor: '#da3633' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#8b949e' } } },
+            scales: {
+                x: { type: 'time', stacked: true, time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } }, ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+                y: { stacked: true, ticks: { color: '#8b949e' }, grid: { color: '#21262d' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+async function refreshData() {
+    const btn = document.getElementById('refreshBtn');
+    btn.disabled = true; btn.textContent = '⏳ Loading...';
+    try {
+        const resp = await fetch('/api/refresh');
+        const data = await resp.json();
+        renderCostChart(data.costSummary);
+        renderTokenTable(data.tokenUsage);
+        renderTrendChart(data.costTrend);
+        renderRequestChart(data.requestStats);
+        document.getElementById('lastUpdate').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+    } catch (e) {
+        console.error('Refresh failed:', e);
+        document.getElementById('lastUpdate').textContent = 'Refresh failed: ' + e.message;
+    }
+    btn.disabled = false; btn.textContent = '↻ Refresh';
+}
+
+// Initial load
+refreshData();
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    if (document.getElementById('autoRefresh').checked) refreshData();
+}, 30000);
+</script>
+</body>
+</html>
