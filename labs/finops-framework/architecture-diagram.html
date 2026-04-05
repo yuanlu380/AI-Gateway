@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FinOps Framework Architecture</title>
+    <style>
+        body { margin: 0; padding: 20px; background: #1e1e1e; display: flex; flex-direction: column; align-items: center; }
+        h1 { color: #fff; font-family: Segoe UI, sans-serif; margin-bottom: 20px; }
+        .info { color: #aaa; font-family: Segoe UI, sans-serif; margin-bottom: 20px; font-size: 14px; }
+        #diagram { background: #fff; border-radius: 12px; padding: 30px; max-width: 95vw; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>APIM ❤️ FinOps Framework Architecture</h1>
+    <p class="info">Zoom: Ctrl + / Ctrl - | Right-click the diagram → Save Image As… for high-res export</p>
+    <div id="diagram">
+        <pre class="mermaid">
+graph TB
+    subgraph Apps["🖥️ Client Applications"]
+        App1["App Team A"]
+        App2["App Team B"]
+        App3["App Team C"]
+    end
+
+    subgraph APIM["Azure API Management"]
+        direction TB
+        SubKeys["Subscription Keys\nper team/product"]
+
+        subgraph Products["Products with Token Rate Limits"]
+            Platinum["💎 Platinum\nHigh TPM"]
+            Gold["🥇 Gold\nMedium TPM"]
+            Silver["🥈 Silver\nLow TPM"]
+        end
+
+        subgraph Policies["APIM Policies"]
+            TokenLimit["azure-openai-token-limit\nper subscription"]
+            EmitMetrics["azure-openai-emit-token-metric\nnamespace: aiusage"]
+            BackendRouting["set-backend-service"]
+        end
+    end
+
+    subgraph AI["Azure OpenAI Services"]
+        Backend1["AI Foundry\nBackend"]
+    end
+
+    subgraph Monitor["Azure Monitor"]
+        direction TB
+        AppInsights["Application Insights\nCustom Metrics"]
+        LAW["Log Analytics Workspace"]
+
+        subgraph Tables["Custom Tables"]
+            PricingTable["PRICING_CL\nModel token prices"]
+            QuotaTable["SUBSCRIPTION_QUOTA_CL\nCost quotas per sub"]
+        end
+
+        subgraph DCR["Data Collection Rules"]
+            PricingDCR["DCR Pricing"]
+            QuotaDCR["DCR Quota"]
+        end
+
+        AlertRule["📊 Scheduled Query Alert\nCost > Quota?"]
+    end
+
+    subgraph Actions["Automated Actions"]
+        ActionGroup["Action Group\nLogic App trigger"]
+        LogicApp["⚡ Logic App Workflow\nDisable APIM Subscription\nwhen quota exceeded"]
+    end
+
+    subgraph Dashboard["📈 Azure Dashboard"]
+        CostWorkbook["Cost Analysis\nWorkbook"]
+        InsightsWorkbook["Azure OpenAI\nInsights Workbook"]
+        AlertsWorkbook["Alerts\nWorkbook"]
+    end
+
+    App1 -->|"Sub Key A"| SubKeys
+    App2 -->|"Sub Key B"| SubKeys
+    App3 -->|"Sub Key C"| SubKeys
+    SubKeys --> Products
+    Products --> Policies
+    TokenLimit -->|"Rate limit\nenforced"| BackendRouting
+    EmitMetrics -->|"Token usage\nmetrics"| AppInsights
+    BackendRouting --> Backend1
+
+    AppInsights --> LAW
+    PricingDCR --> PricingTable
+    QuotaDCR --> QuotaTable
+    LAW --> AlertRule
+    PricingTable --> AlertRule
+    QuotaTable --> AlertRule
+
+    AlertRule -->|"Cost exceeds\nquota"| ActionGroup
+    ActionGroup -->|"HTTP trigger"| LogicApp
+    LogicApp -->|"PATCH subscription\nstate: suspended"| APIM
+
+    LAW --> Dashboard
+
+    classDef apim fill:#0078d4,stroke:#005a9e,color:white,font-weight:bold
+    classDef ai fill:#00a86b,stroke:#007a4d,color:white,font-weight:bold
+    classDef monitor fill:#7b2d8e,stroke:#5b1d6e,color:white,font-weight:bold
+    classDef action fill:#e8590c,stroke:#c74a0c,color:white,font-weight:bold
+    classDef dashboard fill:#107c10,stroke:#0b5a0b,color:white,font-weight:bold
+    classDef app fill:#505050,stroke:#333,color:white,font-weight:bold
+
+    class APIM,SubKeys,Products,Platinum,Gold,Silver,Policies,TokenLimit,EmitMetrics,BackendRouting apim
+    class AI,Backend1 ai
+    class Monitor,AppInsights,LAW,Tables,PricingTable,QuotaTable,DCR,PricingDCR,QuotaDCR,AlertRule monitor
+    class Actions,ActionGroup,LogicApp action
+    class Dashboard,CostWorkbook,InsightsWorkbook,AlertsWorkbook dashboard
+    class Apps,App1,App2,App3 app
+        </pre>
+    </div>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: { 
+                useMaxWidth: false,
+                htmlLabels: true,
+                curve: 'basis',
+                nodeSpacing: 50,
+                rankSpacing: 60
+            },
+            themeVariables: {
+                fontSize: '16px',
+                fontFamily: 'Segoe UI, sans-serif'
+            }
+        });
+    </script>
+</body>
+</html>

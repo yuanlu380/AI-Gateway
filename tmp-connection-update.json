@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "authType": "ApiKey",
+    "category": "ApiManagement",
+    "isSharedToAll": true,
+    "target": "https://apim-q6z6fj63xd7he.azure-api.net/inference/openai",
+    "credentials": {
+      "key": "29d5d6dc6fe748f1a9a08e08a67a3051"
+    },
+    "metadata": {
+      "ApiType": "Azure",
+      "Location": "swedencentral",
+      "deploymentInPath": "true",
+      "inferenceAPIVersion": "2024-12-01-preview",
+      "models": "[{\"name\":\"gpt-4o-mini\",\"properties\":{\"model\":{\"name\":\"gpt-4o-mini\",\"version\":\"2024-07-18\",\"format\":\"OpenAI\"}}},{\"name\":\"gpt-4.1-mini\",\"properties\":{\"model\":{\"name\":\"gpt-4.1-mini\",\"version\":\"2025-04-14\",\"format\":\"OpenAI\"}}},{\"name\":\"gpt-4.1\",\"properties\":{\"model\":{\"name\":\"gpt-4.1\",\"version\":\"2025-04-14\",\"format\":\"OpenAI\"}}}]"
+    }
+  }
+}

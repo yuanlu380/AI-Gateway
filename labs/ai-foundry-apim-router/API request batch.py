@@ -2,17 +2,17 @@ import requests
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-URL = "https://apim-q6z6fj63xd7he.azure-api.net/inference/openai/deployments/gpt-4.1/chat/completions?api-version=2024-12-01-preview"
+URL = "https://apim-q6z6fj63xd7he.azure-api.net/inference/openai/responses?api-version=2025-03-01-preview"
 HEADERS = {
     "api-key": "29d5d6dc6fe748f1a9a08e08a67a3051",
     "Content-Type": "application/json"
 }
 BODY = {
-    "messages": [{"role": "user", "content": "Say hello in one word"}],
-    "max_tokens": 5
+    "model": "gpt-4.1",
+    "input": "Say hello in one word"
 }
 
-TOTAL_REQUESTS = 35
+TOTAL_REQUESTS = 15
 
 start_time = time.time()
 
@@ -25,13 +25,13 @@ def call(i):
         return (i, r.headers.get("x-backend-region", "?"), r.status_code,
                 r.headers.get("x-ratelimit-remaining-requests", "?"),
                 r.headers.get("x-ratelimit-remaining-tokens", "?"),
+                r.headers.get("x-retry-count", "0"),
                 time.time())
     except Exception as e:
-        return (i, "ERROR", 0, "?", "?", time.time())
+        return (i, "ERROR", 0, "?", "?", "0", time.time())
 
 print(f"Sending {TOTAL_REQUESTS} concurrent requests to gpt-4.1")
-#print(f"East: 26 RPM (Standard) — retry policy routes 429s to West")
-print(f"West: 500 RPM (absorbs overflow)\n")
+print(f"West: absorbs overflow on 429\n")
 
 east_count = 0
 west_count = 0
@@ -42,10 +42,9 @@ with ThreadPoolExecutor(max_workers=TOTAL_REQUESTS) as pool:
     for future in as_completed(futures):
         results.append(future.result())
 
-# Sort by request number for clean output
 results.sort(key=lambda x: x[0])
 
-for (i, region, status, rpm, tpm, t) in results:
+for (i, region, status, rpm, tpm, retries, t) in results:
     if region == "East":
         east_count += 1
     elif region == "West":
@@ -53,13 +52,13 @@ for (i, region, status, rpm, tpm, t) in results:
 
     note = ""
     if status == 429:
-        note += " ⚠ THROTTLED"
+        note += " ** THROTTLED"
     if status == 503:
-        note += " ⚠ SERVICE UNAVAILABLE"
+        note += " ** SERVICE UNAVAILABLE"
     if region == "West":
-        note += " 🔄 East 429 → retried to West"
+        note += " << East 429 -> retried to West"
 
-    print(f"{ts(t)}  Request {i:02d} → {region:7s} [{status}] (rpm: {rpm}, tpm: {tpm}){note}")
+    print(f"{ts(t)}  Request {i:02d} -> {region:7s} [{status}] retries:{retries} (rpm: {rpm}, tpm: {tpm}){note}")
 
 print(f"\n{'='*60}")
 print(f"  East (direct):    {east_count} requests")
